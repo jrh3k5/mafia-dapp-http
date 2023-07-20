@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	var gameEngine game.Engine = nil
+	var gameEngine game.Engine = game.NewInMemoryGameEngine()
 
 	r := gin.Default()
 	r.POST("/game/:hostAddress", controllers.NewInitializeGameHandler(gameEngine))

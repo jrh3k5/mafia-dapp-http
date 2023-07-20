@@ -10,7 +10,7 @@ type Engine interface {
 	GetPlayer(ctx context.Context, hostAddress string, playerAddress string) (*Player, error)
 	GetPlayers(ctx context.Context, hostAddress string) ([]*Player, error)
 	InitializeGame(ctx context.Context, hostAddress string) error
-	JoinGame(ctx context.Context, hostAddress string, playerNickname string) error
+	JoinGame(ctx context.Context, hostAddress string, playerAddress string, playerNickname string) error
 	StartGame(ctx context.Context, hostAddress string) error
 	VoteToKill(ctx context.Context, hostAddress string, killerAddress string, killeeAddress string) error
 	WaitForGameStart(ctx context.Context, hostAddress string) error

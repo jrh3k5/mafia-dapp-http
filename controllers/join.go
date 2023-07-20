@@ -16,6 +16,12 @@ func NewJoinHandler(gameEngine game.Engine) gin.HandlerFunc {
 			return
 		}
 
+		playerAddress := c.Query("playerAddress")
+		if playerAddress == "" {
+			c.AbortWithStatus(http.StatusBadRequest)
+			return
+		}
+
 		playerNickname := c.Query("playerNickname")
 		if playerNickname == "" {
 			c.AbortWithStatus(http.StatusBadRequest)
