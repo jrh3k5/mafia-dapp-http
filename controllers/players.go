@@ -71,7 +71,7 @@ func NewGetPlayersHandler(gameEngine game.Engine) gin.HandlerFunc {
 }
 
 type playerResponse struct {
-	PlayerAddress  string `json:""`
-	PlayerNickname string `json:""`
-	PlayerRole     *int   `json:",omitempty"`
+	PlayerAddress  string `json:"playerAddress"`
+	PlayerNickname string `json:"playerNickname"`
+	PlayerRole     *int   `json:"playerRole,omitempty"`
 }

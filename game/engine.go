@@ -45,4 +45,11 @@ type Player struct {
 	PlayerAddress  string
 	PlayerNickname string
 	PlayerRole     PlayerRole
+	Dead           bool
+	Convicted      bool
+}
+
+// CanAct determines if the user is able to make actions within the game
+func (p *Player) CanAct() bool {
+	return !p.Convicted && !p.Dead
 }
