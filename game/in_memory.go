@@ -26,7 +26,7 @@ func (i *InMemoryEngine) AccuseAsMafia(ctx context.Context, hostAddress string, 
 		return fmt.Errorf("failed to find game state for host address '%s'", hostAddress)
 	}
 
-	return gameState.accuseAsMafia(accuseeAddress, accuseeAddress)
+	return gameState.accuseAsMafia(accuserAddress, accuseeAddress)
 }
 
 func (i *InMemoryEngine) CancelGame(ctx context.Context, hostAddress string) error {
@@ -70,34 +70,6 @@ func (i *InMemoryEngine) ExecutePhase(ctx context.Context, hostAddress string) e
 	gameState.notifyOfPhaseExecution(phaseExecution)
 
 	return nil
-}
-
-// findHighestVote finds the address in the given map that has singly accrued the highest number
-// of votes. If one address has a majority of the votes, this returns the address and a bool value of 'true'.
-// If there is no clear winner of the votes, this returns false for the bool value.
-func (g *gameState) findHighestVote(votes map[string]string) (string, bool) {
-	voteCounts := make(map[string]int)
-	var highestVoteCount int
-	for _, vote := range votes {
-		voteCount := voteCounts[vote] + 1
-		voteCounts[vote] = voteCount
-		if voteCount > highestVoteCount {
-			highestVoteCount = voteCount
-		}
-	}
-
-	var winners []string
-	for candidate, count := range voteCounts {
-		if count == highestVoteCount {
-			winners = append(winners, candidate)
-		}
-	}
-
-	if len(winners) == 1 {
-		return winners[0], true
-	}
-
-	return "", false
 }
 
 func (i *InMemoryEngine) FinishGame(ctx context.Context, hostAddress string) error {
@@ -292,22 +264,22 @@ func (g *gameState) accuseAsMafia(accuserAddress string, accuseeAddress string) 
 		return errors.New("Mafia accusations can only be made during the day")
 	}
 
-	if accuserPlayer := g.getPlayer(accuserAddress); accuserPlayer != nil {
-		return errors.New("accuser must be a member of game")
+	if accuserPlayer := g.getPlayer(accuserAddress); accuserPlayer == nil {
+		return fmt.Errorf("accuser '%s' must be a member of game", accuserAddress)
 	} else if !accuserPlayer.CanAct() {
-		return errors.New("accuser must be able to take actions in the game")
+		return fmt.Errorf("accuser '%s' must be able to take actions in the game", accuserAddress)
 	}
 
-	if accuseePlayer := g.getPlayer(accuseeAddress); accuseePlayer != nil {
-		return errors.New("the accused must be a member of the game")
+	if accuseePlayer := g.getPlayer(accuseeAddress); accuseePlayer == nil {
+		return fmt.Errorf("the accused '%s' must be a member of the game", accuseeAddress)
 	} else if !accuseePlayer.CanAct() {
-		return errors.New("the accussed must be able to take actions in the game")
+		return fmt.Errorf("the accused '%s' must be able to take actions in the game", accuseeAddress)
 	}
 
 	g.mafiaAccusationsMutex.Lock()
 	defer g.mafiaAccusationsMutex.Unlock()
 
-	if _, hasAccusation := g.mafiaAccusations[accuseeAddress]; hasAccusation {
+	if _, hasAccusation := g.mafiaAccusations[accuserAddress]; hasAccusation {
 		return errors.New("a Mafia vote accusation cannot be made twice")
 	}
 
@@ -350,9 +322,37 @@ func (g *gameState) calculatePhaseOutcome() PhaseOutcome {
 	return PhaseOutcomeContinuation
 }
 
+// findHighestVote finds the address in the given map that has singly accrued the highest number
+// of votes. If one address has a majority of the votes, this returns the address and a bool value of 'true'.
+// If there is no clear winner of the votes, this returns false for the bool value.
+func (g *gameState) findHighestVote(votes map[string]string) (string, bool) {
+	voteCounts := make(map[string]int)
+	var highestVoteCount int
+	for _, vote := range votes {
+		voteCount := voteCounts[vote] + 1
+		voteCounts[vote] = voteCount
+		if voteCount > highestVoteCount {
+			highestVoteCount = voteCount
+		}
+	}
+
+	var winners []string
+	for candidate, count := range voteCounts {
+		if count == highestVoteCount {
+			winners = append(winners, candidate)
+		}
+	}
+
+	if len(winners) == 1 {
+		return winners[0], true
+	}
+
+	return "", false
+}
+
 func (g *gameState) getCurrentPhase() TimeOfDay {
 	g.currentPhaseMutex.RLock()
-	defer g.currentPhaseMutex.Unlock()
+	defer g.currentPhaseMutex.RUnlock()
 
 	return g.currentPhase
 }
@@ -395,6 +395,7 @@ func (g *gameState) notifyOfPhaseExecution(phaseExecution *PhaseExecution) {
 			defer g.mafiaAccusationsMutex.Unlock()
 
 			g.mafiaAccusations = make(map[string]string)
+			g.currentPhase = TimeOfDayNight
 		}()
 	case TimeOfDayNight:
 		defer func() {
@@ -402,28 +403,32 @@ func (g *gameState) notifyOfPhaseExecution(phaseExecution *PhaseExecution) {
 			defer g.killVotesMutex.Unlock()
 
 			g.killVotes = make(map[string]string)
+			g.currentPhase = TimeOfDayDay
 		}()
 	}
 
-	defer func() {
-		g.phaseExecutionMutex.Lock()
-		defer g.phaseExecutionMutex.Unlock()
+	g.phaseExecutionMutex.Lock()
+	defer g.phaseExecutionMutex.Unlock()
 
-		g.phaseExecutionSubs = nil
-	}()
+	fmt.Printf("Notifying %d users of phase execution\n", len(g.phaseExecutionSubs))
 
 	for _, phaseSub := range g.phaseExecutionSubs {
 		phaseSub <- phaseExecution
 		close(phaseSub)
 	}
+
+	g.phaseExecutionSubs = nil
 }
 
 func (g *gameState) subscribeToPhaseExecution() (<-chan *PhaseExecution, error) {
 	g.phaseExecutionMutex.Lock()
-	defer g.phaseExecutionMutex.RUnlock()
+	defer g.phaseExecutionMutex.Unlock()
 
 	newSub := make(chan *PhaseExecution)
 	g.phaseExecutionSubs = append(g.phaseExecutionSubs, newSub)
+
+	fmt.Printf("%d users have subscribed for phase execution\n", len(g.phaseExecutionSubs))
+
 	return newSub, nil
 }
 
@@ -469,7 +474,7 @@ func (g *gameState) voteToKill(voterAddress string, victimAddress string) error 
 		return errors.New("Votes to kill can only be made during the night")
 	}
 
-	if voterPlayer := g.getPlayer(voterAddress); voterPlayer != nil {
+	if voterPlayer := g.getPlayer(voterAddress); voterPlayer == nil {
 		return errors.New("voter must be a member of game")
 	} else if !voterPlayer.CanAct() {
 		return errors.New("voter must be able to take actions in the game")
@@ -477,7 +482,7 @@ func (g *gameState) voteToKill(voterAddress string, victimAddress string) error 
 		return errors.New("only members of the Mafia can take actions in the game")
 	}
 
-	if victimPlayer := g.getPlayer(victimAddress); victimPlayer != nil {
+	if victimPlayer := g.getPlayer(victimAddress); victimPlayer == nil {
 		return errors.New("the victim must be a member of the game")
 	} else if !victimPlayer.CanAct() {
 		return errors.New("the victim player must be able to take actions in the game")

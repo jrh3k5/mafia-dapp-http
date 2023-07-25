@@ -54,9 +54,9 @@ func NewPhaseExecutionWaitHandler(gameEngine game.Engine) gin.HandlerFunc {
 }
 
 type phaseExecutionResponse struct {
-	HostAddress      string   `json:""`
-	PhaseOutcome     int      `json:""`
-	CurrentPhase     int      `json:""`
-	KilledPlayers    []string `json:""`
-	ConvictedPlayers []string `json:""`
+	HostAddress      string   `json:"hostAddress"`
+	PhaseOutcome     int      `json:"phaseOutcome"`
+	CurrentPhase     int      `json:"currentPhase"`
+	KilledPlayers    []string `json:"killedPlayers"`
+	ConvictedPlayers []string `json:"convictedPlayers"`
 }

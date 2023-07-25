@@ -3,6 +3,8 @@ package controllers
 import (
 	"net/http"
 
+	"errors"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jrh3k5/mafia-dapp-http/game"
 )
@@ -24,23 +26,23 @@ func NewPlayerVoteHandler(gameEngine game.Engine) gin.HandlerFunc {
 func handleAccusation(c *gin.Context, gameEngine game.Engine) {
 	hostAddress := c.Param("hostAddress")
 	if hostAddress == "" {
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithError(http.StatusBadRequest, errors.New("host address must be supplidd"))
 		return
 	}
 
-	playerAddress := c.Param("voterAddress")
-	if playerAddress == "" {
-		c.AbortWithStatus(http.StatusBadRequest)
+	voterAddress := c.Param("voterAddress")
+	if voterAddress == "" {
+		c.AbortWithError(http.StatusBadRequest, errors.New("voter address must be supplied"))
 		return
 	}
 
-	accuseeAddress := c.Query("player")
+	accuseeAddress := c.Query("playerAddress")
 	if accuseeAddress == "" {
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithError(http.StatusBadRequest, errors.New("vote receipient must be supplied"))
 		return
 	}
 
-	if err := gameEngine.AccuseAsMafia(c.Request.Context(), hostAddress, playerAddress, accuseeAddress); err != nil {
+	if err := gameEngine.AccuseAsMafia(c.Request.Context(), hostAddress, voterAddress, accuseeAddress); err != nil {
 		_ = c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
@@ -51,19 +53,19 @@ func handleAccusation(c *gin.Context, gameEngine game.Engine) {
 func handleKillVote(c *gin.Context, gameEngine game.Engine) {
 	hostAddress := c.Param("hostAddress")
 	if hostAddress == "" {
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithError(http.StatusBadRequest, errors.New("hostAddress must be supplied"))
 		return
 	}
 
 	killerAddress := c.Param("voterAddress")
 	if killerAddress == "" {
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithError(http.StatusBadRequest, errors.New("voterAddress must be supplied"))
 		return
 	}
 
-	victimAddress := c.Query("player")
+	victimAddress := c.Query("playerAddress")
 	if victimAddress == "" {
-		c.AbortWithStatus(http.StatusBadRequest)
+		c.AbortWithError(http.StatusBadRequest, errors.New("playerAddress must be supplied"))
 		return
 	}
 
