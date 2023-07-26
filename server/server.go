@@ -10,6 +10,14 @@ func NewServer() *gin.Engine {
 	var gameEngine game.Engine = game.NewInMemoryGameEngine()
 
 	r := gin.Default()
+
+	r.Use(func(c *gin.Context) {
+		c.Next()
+
+		// allow everything
+		c.Writer.Header().Add("Access-Control-Allow-Origin", "*")
+	})
+
 	r.POST("/game/:hostAddress", controllers.NewInitializeGameHandler(gameEngine))
 	r.DELETE("/game/:hostAddress", controllers.NewCancelGameHandler(gameEngine))
 	r.POST("/game/:hostAddress/join", controllers.NewJoinHandler(gameEngine))
