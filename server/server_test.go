@@ -48,11 +48,13 @@ var _ = Describe("Server", func() {
 			executeResponse, err := client.R().SetContext(ctx).Post(phaseExecutionURL)
 			Expect(err).ToNot(HaveOccurred(), "executing the phase should not fail")
 			Expect(executeResponse.StatusCode()).To(Equal(http.StatusOK), "unexpected status code executing phase")
+			Expect(executeResponse.Header().Get("Access-Control-Allow-Origin")).To(Equal("*"), "the request should be allowed from all origins")
 		}
 
 		initializeResponse, err := client.R().SetContext(ctx).Post(fmt.Sprintf("%s/game/%s", baseURL, hostAddress))
 		Expect(err).ToNot(HaveOccurred(), "initializing the game should not fail")
 		Expect(initializeResponse.StatusCode()).To(Equal(http.StatusOK), "the game initialization response should signal success")
+		Expect(initializeResponse.Header().Get("Access-Control-Allow-Origin")).To(Equal("*"), "the request should be allowed from all origins")
 
 		playerAddresses := []string{hostAddress,
 			"player0001", "player0002",
@@ -79,6 +81,7 @@ var _ = Describe("Server", func() {
 					joinResponse, err := client.R().SetContext(ctx).Post(fmt.Sprintf("%s/game/%s/join?playerAddress=%s&playerNickname=%s", baseURL, hostAddress, joiningAddress, fmt.Sprintf("%sNick", joiningAddress)))
 					Expect(err).ToNot(HaveOccurred(), "%s joining game should not fail", joiningAddress)
 					Expect(joinResponse.StatusCode()).To(Equal(http.StatusOK), "unexpected status code when player '%s' joined game", joiningAddress)
+					Expect(joinResponse.Header().Get("Access-Control-Allow-Origin")).To(Equal("*"), "the request should be allowed from all origins")
 				}()
 
 				func() {
@@ -87,6 +90,7 @@ var _ = Describe("Server", func() {
 					waitResponse, err := client.R().SetContext(ctx).Get(fmt.Sprintf("%s/game/%s/start/wait", baseURL, hostAddress))
 					Expect(err).ToNot(HaveOccurred(), "waiting for game to start should not have failed")
 					Expect(waitResponse.StatusCode()).To(Equal(http.StatusOK), "unexpected status code while waiting for game to start")
+					Expect(waitResponse.Header().Get("Access-Control-Allow-Origin")).To(Equal("*"), "the request should be allowed from all origins")
 				}()
 			}()
 		}
@@ -98,6 +102,7 @@ var _ = Describe("Server", func() {
 		startResponse, err := client.R().SetContext(ctx).Post(fmt.Sprintf("%s/game/%s/start", baseURL, hostAddress))
 		Expect(err).ToNot(HaveOccurred(), "starting the game should not fail")
 		Expect(startResponse.StatusCode()).To(Equal(http.StatusOK), "unexpected response to starting game")
+		Expect(startResponse.Header().Get("Access-Control-Allow-Origin")).To(Equal("*"), "the request should be allowed from all origins")
 
 		startWaitGroup.Wait()
 
@@ -108,6 +113,8 @@ var _ = Describe("Server", func() {
 		for _, playerAddress := range playerAddresses {
 			playerInfoResponse, err := client.R().SetContext(ctx).Get(fmt.Sprintf("%s/game/%s/players/%s", baseURL, hostAddress, playerAddress))
 			Expect(err).ToNot(HaveOccurred(), "getting info for player '%s' should not have failed", playerAddress)
+			Expect(playerInfoResponse.Header().Get("Access-Control-Allow-Origin")).To(Equal("*"), "the request should be allowed from all origins")
+
 			var infoResponse map[string]any
 			Expect(json.Unmarshal(playerInfoResponse.Body(), &infoResponse)).ToNot(HaveOccurred(), "unmarshalling the player '%s' info response from JSON should not fail", playerAddress)
 			Expect(infoResponse).To(And(HaveLen(3), HaveKey("playerAddress"), HaveKey("playerNickname"), HaveKey("playerRole")), "the expected player for player '%s' information must be present", playerAddress)
@@ -202,6 +209,7 @@ func accuseAsMafia(ctx context.Context, client resty.Client, baseURL string, hos
 		voteResponse, err := client.R().SetContext(ctx).Post(voteURL)
 		Expect(err).ToNot(HaveOccurred(), "failed to accuse '%s' of being mafia on behalf of user '%s'", accusedAddress, accuserAddress)
 		Expect(voteResponse.StatusCode()).To(Equal(http.StatusOK), "unexpected response status code when accusing '%s' of being mafia on behalf of user '%s'; response body was '%s'", accusedAddress, accuserAddress, string(voteResponse.Body()))
+		Expect(voteResponse.Header().Get("Access-Control-Allow-Origin")).To(Equal("*"), "the request should be allowed from all origins")
 
 		sourceAddress := accuserAddress
 
@@ -213,6 +221,8 @@ func accuseAsMafia(ctx context.Context, client resty.Client, baseURL string, hos
 			waitResponse, err := client.R().SetContext(ctx).Get(waitURL)
 			Expect(err).ToNot(HaveOccurred(), "waiting for phase execution on behalf of '%s' failed", sourceAddress)
 			Expect(waitResponse.StatusCode()).To(Equal(http.StatusOK), "unexpected status code waiting for phase execution on behalf of '%s'; response body is: %s", sourceAddress, string(waitResponse.Body()))
+			Expect(waitResponse.Header().Get("Access-Control-Allow-Origin")).To(Equal("*"), "the request should be allowed from all origins")
+
 			var phaseExecution *phaseExecutionResponse
 			Expect(json.Unmarshal(waitResponse.Body(), &phaseExecution)).ToNot(HaveOccurred(), "failed to unmarshal response for phase execution waiting")
 			phaseExecutionChan <- phaseExecution
@@ -226,6 +236,7 @@ func voteToKill(ctx context.Context, client resty.Client, baseURL string, hostAd
 		voteResponse, err := client.R().SetContext(ctx).Post(voteURL)
 		Expect(err).ToNot(HaveOccurred(), "failed to vote to kill '%s' on behalf of user '%s'", voterAddress, victimAddress)
 		Expect(voteResponse.StatusCode()).To(Equal(http.StatusOK), "unexpected response status code when voting to kill '%s' on behalf of user '%s'; response body is '%s'", voterAddress, victimAddress, string(voteResponse.Body()))
+		Expect(voteResponse.Header().Get("Access-Control-Allow-Origin")).To(Equal("*"), "the request should be allowed from all origins")
 
 		sourceAddress := voterAddress
 
@@ -237,6 +248,8 @@ func voteToKill(ctx context.Context, client resty.Client, baseURL string, hostAd
 			waitResponse, err := client.R().SetContext(ctx).Get(waitURL)
 			Expect(err).ToNot(HaveOccurred(), "waiting for phase execution on behalf of '%s' failed", sourceAddress)
 			Expect(waitResponse.StatusCode()).To(Equal(http.StatusOK), "unexpected status code waiting for phase execution on behalf of '%s'; response body is: '%s'", sourceAddress, string(waitResponse.Body()))
+			Expect(waitResponse.Header().Get("Access-Control-Allow-Origin")).To(Equal("*"), "the request should be allowed from all origins")
+
 			var phaseExecution *phaseExecutionResponse
 			Expect(json.Unmarshal(waitResponse.Body(), &phaseExecution)).ToNot(HaveOccurred(), "failed to unmarshal response for phase execution waiting")
 			phaseExecutionChan <- phaseExecution

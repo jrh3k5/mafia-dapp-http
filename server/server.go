@@ -12,10 +12,10 @@ func NewServer() *gin.Engine {
 	r := gin.Default()
 
 	r.Use(func(c *gin.Context) {
-		c.Next()
-
 		// allow everything
 		c.Writer.Header().Add("Access-Control-Allow-Origin", "*")
+
+		c.Next()
 	})
 
 	r.POST("/game/:hostAddress", controllers.NewInitializeGameHandler(gameEngine))
