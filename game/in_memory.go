@@ -124,7 +124,7 @@ func (i *InMemoryEngine) JoinGame(_ context.Context, hostAddress string, playerA
 		return errors.New("cannot join a game multiple times")
 	}
 
-	game.addPlayer(newPlayer(playerAddress))
+	game.addPlayer(newPlayer(playerAddress, playerNickname))
 
 	return nil
 }
@@ -248,6 +248,8 @@ func (g *gameState) announceStart() error {
 	if g.started {
 		return errors.New("game cannot be started multiple times")
 	}
+
+	fmt.Printf("Notifying %d subscribers of game start\n", len(g.gameStartSubs))
 
 	for _, subChan := range g.gameStartSubs {
 		subChan <- nil
@@ -442,6 +444,9 @@ func (g *gameState) subscribeToStart() (<-chan any, error) {
 
 	newSub := make(chan any)
 	g.gameStartSubs = append(g.gameStartSubs, newSub)
+
+	fmt.Printf("%d users have subscribed for game start\n", len(g.gameStartSubs))
+
 	return newSub, nil
 }
 
@@ -500,8 +505,9 @@ func (g *gameState) voteToKill(voterAddress string, victimAddress string) error 
 	return nil
 }
 
-func newPlayer(playerAddress string) *Player {
+func newPlayer(playerAddress string, playerNickname string) *Player {
 	return &Player{
-		PlayerAddress: playerAddress,
+		PlayerAddress:  playerAddress,
+		PlayerNickname: playerNickname,
 	}
 }

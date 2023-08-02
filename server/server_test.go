@@ -118,6 +118,7 @@ var _ = Describe("Server", func() {
 			var infoResponse map[string]any
 			Expect(json.Unmarshal(playerInfoResponse.Body(), &infoResponse)).ToNot(HaveOccurred(), "unmarshalling the player '%s' info response from JSON should not fail", playerAddress)
 			Expect(infoResponse).To(And(HaveLen(3), HaveKey("playerAddress"), HaveKey("playerNickname"), HaveKey("playerRole")), "the expected player for player '%s' information must be present", playerAddress)
+			Expect(infoResponse["playerNickname"]).ToNot(BeEmpty(), "the user's nickname should be returned")
 			playerRole := infoResponse["playerRole"]
 			Expect(playerRole).To(Or(Equal(float64(0)), Equal(float64(1))), "the player role must be of an expected value")
 			switch infoResponse["playerRole"] {
